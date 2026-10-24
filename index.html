@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<title>Port Marrow Files</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;600;700&family=Big+Shoulders+Display:wght@700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: full-bleed dark top-down map with a taped case-file HUD; every panel is a manila folder over the scene */
+:root{--bg:#0a141c;--ink:#f1ead8;--dim:#9fb0b8;--lamp:#ffb347;--tape:#f2c230;--uv:#9b6bff;--file:#e9dfc4;--fileink:#1d1a14;--line:rgba(241,234,216,.2);--glass:rgba(9,18,26,.82);
+ --disp:'Big Shoulders Display','Impact',sans-serif;--ui:'Archivo Narrow','Trebuchet MS',sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:17px;line-height:1.25;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;
+ padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-sizing:border-box}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+#app{position:relative;height:100%;width:100%}
+#cv{position:absolute;left:-16px;right:-16px;top:calc(-1*env(safe-area-inset-top,0px));bottom:calc(-1*env(safe-area-inset-bottom,0px));width:calc(100% + 32px);height:calc(100% + env(safe-area-inset-top,0px) + env(safe-area-inset-bottom,0px));display:block;touch-action:none}
+.mono{font-family:var(--mono);letter-spacing:.06em}
+#scene{position:absolute;inset:0;pointer-events:none}
+#scene>*{pointer-events:auto}
+#top{position:absolute;left:0;right:0;top:max(8px,env(safe-area-inset-top,0px));display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--glass);border:1px solid var(--line);border-radius:6px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#top .mono{font-size:12px;color:var(--tape)}
+#loc{flex:1;font-family:var(--disp);font-size:18px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#clock{font-family:var(--mono);font-size:13px;color:var(--dim)}
+#bQuit{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);font-size:16px}
+#nav{position:absolute;left:0;right:0;top:calc(max(8px,env(safe-area-inset-top,0px)) + 52px);display:flex;gap:6px}
+#nav button{flex:1;padding:9px 4px;background:var(--glass);border:1px solid var(--line);border-radius:6px;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#nav button.hot{background:var(--tape);color:#1c1a12;border-color:var(--tape)}
+.pulse{animation:pl 1.2s ease-in-out infinite}
+@keyframes pl{50%{box-shadow:0 0 0 4px rgba(242,194,48,.55)}}
+#bot{position:absolute;left:0;right:0;bottom:max(10px,env(safe-area-inset-bottom,0px));display:grid;gap:8px}
+#trayW{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--glass);border:1px solid var(--line);border-radius:6px;min-height:40px}
+#trayW small{font-family:var(--mono);font-size:11px;color:var(--dim)}
+#tray{display:flex;gap:6px;flex:1;flex-wrap:wrap}
+.chip{width:26px;height:26px;display:grid;place-items:center;background:var(--tape);color:#1c1a12;font-weight:800;clip-path:polygon(50% 0,100% 100%,0 100%);padding-top:7px;font-size:12px}
+.chip.done{background:#8fd18f}
+#tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#tools button{padding:12px 4px;background:var(--glass);border:1px solid var(--line);border-radius:6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:15px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#tools button.on{border-color:var(--lamp);color:var(--lamp);box-shadow:inset 0 0 0 1px var(--lamp),0 0 18px rgba(255,179,71,.3)}
+#tools button[data-t=uv].on{border-color:var(--uv);color:#c9b0ff;box-shadow:inset 0 0 0 1px var(--uv),0 0 18px rgba(155,107,255,.4)}
+#toast{position:absolute;left:0;right:0;top:calc(max(8px,env(safe-area-inset-top,0px)) + 104px);padding:9px 14px;border-radius:6px;background:rgba(9,18,26,.94);border-left:4px solid var(--tape);opacity:0;transform:translateY(-6px);transition:.3s;pointer-events:none;font-size:16px}
+#toast.show{opacity:1;transform:none}
+.ov{position:absolute;inset:0;display:flex;padding:max(14px,env(safe-area-inset-top,0px)) 0 max(14px,env(safe-area-inset-bottom,0px));z-index:10;background:rgba(5,10,15,.62)}
+.ov[hidden],#scene[hidden],#title[hidden]{display:none}
+.pan{margin:auto 0;width:100%;max-height:100%;overflow:auto;touch-action:pan-y;background:var(--file);color:var(--fileink);border-radius:4px 14px 4px 4px;padding:14px 16px 16px;box-shadow:0 20px 50px rgba(0,0,0,.55);position:relative;-webkit-user-select:text;user-select:text}
+.pan::before{content:"";position:absolute;left:0;top:0;width:46%;height:10px;background:var(--tape);background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.65) 0 8px,transparent 8px 16px)}
+.pan h2{font-family:var(--disp);font-size:28px;letter-spacing:.05em;text-transform:uppercase;margin:6px 0 8px}
+.pan h3{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin:16px 0 6px;color:#6a4a10}
+.pan p{margin:6px 0;font-size:18px}
+.dim{color:#5a5a50;font-size:16px}
+.x{position:absolute;right:10px;top:12px;width:34px;height:34px;border-radius:50%;border:1.5px solid rgba(29,26,20,.5);font-size:18px;display:grid;place-items:center}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px;margin:6px 0;background:rgba(29,26,20,.07);border-radius:8px;border:1px solid rgba(29,26,20,.2)}
+.row i{width:30px;height:30px;flex:none;display:grid;place-items:center;background:var(--tape);font-style:normal;font-weight:800;clip-path:polygon(50% 0,100% 100%,0 100%);padding-top:9px;font-size:13px}
+.row b{display:block}.row small{display:block;font-size:15px;color:#4a4a40}
+.row.ok{background:rgba(70,140,70,.16)}
+.back{padding:6px 0;font-family:var(--mono);font-size:13px;letter-spacing:.08em;color:#6a4a10}
+.big{display:block;width:100%;margin-top:12px;padding:15px;background:#1d1a14;color:var(--tape);font-weight:700;letter-spacing:.14em;text-transform:uppercase;border-radius:6px;font-size:16px;text-align:center}
+.big:disabled{opacity:.35}
+.bar{height:16px;border-radius:8px;background:rgba(29,26,20,.18);overflow:hidden;margin:12px 0}
+.bar i{display:block;height:100%;width:0;background:#c9871a}
+.ev{display:grid;justify-items:center;gap:4px;margin:8px 0}
+.ev canvas,.pc canvas{border:2px solid #1d1a14;border-radius:6px}
+.pgrid,.sgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.pc,.sc{display:grid;justify-items:center;gap:4px;padding:8px;background:rgba(29,26,20,.07);border:2px solid transparent;border-radius:8px;text-align:center}
+.sc canvas{border-radius:6px;width:72px;height:72px}
+.sc small{font-size:14px;color:#4a4a40}.sc em{font-size:13px;color:#7a5a10;font-style:normal;font-family:var(--mono)}
+.sc.on{border-color:#1d1a14;background:rgba(242,194,48,.3)}
+.pc.bad{border-color:#b02a2a}
+.pc span{font-weight:700}
+.vrow{display:flex;gap:12px;align-items:center;margin:6px 0}
+.vrow canvas{border-radius:8px;flex:none}
+.vrow small{display:block;font-size:15px;color:#4a4a40}
+.dos{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:8px 0;font-size:16px}
+.dos dt{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#6a4a10;padding-top:3px}.dos dd{margin:0}
+.chat{max-height:190px;overflow:auto;padding:8px;background:rgba(29,26,20,.06);border-radius:8px;margin:8px 0;touch-action:pan-y}
+.chat p{margin:5px 0;padding:6px 10px;border-radius:10px;font-size:17px}
+.chat .you{background:#1d1a14;color:#f1ead8;margin-left:22%}.chat .them{background:#fff8e4;border:1px solid rgba(29,26,20,.25);margin-right:12%}.chat .sys{text-align:center;color:#8a1a1a;font-weight:700}
+.qs{display:grid;gap:6px}
+.qs button{text-align:left;padding:11px 12px;border:1.5px solid #1d1a14;border-radius:8px;font-weight:600;font-size:16px}
+.qs .pres{background:#1d1a14;color:var(--tape)}
+.tbl{overflow-x:auto}.tbl table{border-collapse:collapse;width:100%;font-size:15px}.tbl th{font-family:var(--mono);font-size:11px;text-transform:uppercase;text-align:left;padding:4px;color:#6a4a10}.tbl td{padding:5px 4px;border-top:1px solid rgba(29,26,20,.2)}
+.y{background:#f2c230;padding:1px 5px;border-radius:3px;font-weight:700}
+.note{font-size:16px!important}.note b{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#6a4a10;margin-right:6px}
+.list{display:grid;gap:6px}
+.opt{text-align:left;padding:10px;border:1.5px solid rgba(29,26,20,.4);border-radius:8px;font-size:16px}
+.opt.on{background:#1d1a14;color:#f1ead8;border-color:#1d1a14}
+#title{position:absolute;inset:0;display:flex;flex-direction:column;padding:max(24px,env(safe-area-inset-top,0px)) 0 max(20px,env(safe-area-inset-bottom,0px));z-index:12;background:radial-gradient(120% 70% at 50% 20%,rgba(255,179,71,.13),transparent 60%),linear-gradient(180deg,rgba(6,12,18,.45),rgba(6,12,18,.9))}
+#title h1{font-family:var(--disp);font-weight:900;font-size:clamp(54px,18vw,110px);line-height:.86;letter-spacing:.02em;margin:0;text-transform:uppercase}
+#title h1 span{color:var(--tape)}
+.tag{font-size:20px;color:var(--dim);margin-top:12px;max-width:30ch}
+.stack{margin-top:auto;display:grid;gap:10px}
+.tb{display:block;width:100%;padding:16px;border-radius:6px;font-family:var(--disp);font-size:24px;letter-spacing:.08em;text-transform:uppercase;text-align:left;border:1.5px solid var(--line);background:var(--glass)}
+.tb.main{background:var(--tape);color:#1c1a12;border-color:var(--tape)}
+.tb small{display:block;font-family:var(--ui);font-size:15px;letter-spacing:.02em;text-transform:none;opacity:.8}
+.uc{font-style:italic;color:#3a2a6a}
+#res .pan{text-align:center}#resS{font-size:42px;color:#c9871a;letter-spacing:.1em}#resR{font-family:var(--disp);font-size:34px;text-transform:uppercase}
+#resB{text-align:left}
+@media (max-height:520px){.pan h2{font-size:22px}#toast{font-size:14px}.chat{max-height:110px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+<div id="app">
+  <canvas id="cv" role="img" aria-label="Top-down crime scene map"></canvas>
+  <section id="scene" hidden>
+    <div id="top"><span class="mono" id="cno"></span><div id="loc"></div><span id="clock">0:00</span><button type="button" id="bQuit" aria-label="Leave the case">&#10005;</button></div>
+    <div id="nav"><button type="button" id="bLab">Lab</button><button type="button" id="bPeople">People</button><button type="button" id="bNotes">Notes</button><button type="button" id="bHint">Hint</button><button type="button" id="bAcc" class="hot">Arrest</button></div>
+    <div id="toast" role="status"></div>
+    <div id="bot"><div id="trayW"><small>EVIDENCE <span id="trayN">0/7</span></small><div id="tray"></div></div><div id="tools"><button type="button" data-t="look" class="on">Light</button><button type="button" data-t="dust">Powder</button><button type="button" data-t="uv">UV lamp</button></div></div>
+  </section>
+  <section id="brief" class="ov" hidden><div class="pan"><h2>Case file</h2><div id="briefB"></div><button type="button" class="big" id="briefGo">Walk the scene</button></div></section>
+  <section id="lab" class="ov" hidden><div class="pan"><button type="button" class="x" data-close="lab" aria-label="Close">&#10005;</button><h2>Dr. Lin’s lab</h2><div id="labB"></div></div></section>
+  <section id="people" class="ov" hidden><div class="pan"><button type="button" class="x" data-close="people" aria-label="Close">&#10005;</button><h2>People</h2><div id="peopleB"></div></div></section>
+  <section id="notes" class="ov" hidden><div class="pan"><button type="button" class="x" data-close="notes" aria-label="Close">&#10005;</button><h2>Notebook</h2><div id="notesB"></div></div></section>
+  <section id="acc" class="ov" hidden><div class="pan"><button type="button" class="x" data-close="acc" aria-label="Close">&#10005;</button><h2>Make the arrest</h2><div id="accB"></div></div></section>
+  <section id="res" class="ov" hidden><div class="pan"><h2>Case closed</h2><div id="resS"></div><div id="resR"></div><div id="resB"></div><button type="button" class="big" id="resAgain">Back to the files</button></div></section>
+  <section id="title"><div><div class="mono" style="color:var(--tape);font-size:13px;margin-bottom:10px">PORT MARROW FORENSIC UNIT</div><h1>Port<br><span>Marrow</span><br>Files</h1><div class="tag">Four suspects. One lie. The sea is not telling you everything.</div></div>
+    <div class="stack"><button type="button" class="tb main" id="bDaily">Case of the day<small id="dInfo"></small></button><button type="button" class="tb" id="bRand">Random case<small>A new victim, suspects and clues every time</small></button></div></section>
+</div>
+<script>(function(){'use strict';
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),TAU=Math.PI*2;
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function mulb(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+/* ---------- content pools ---------- */
+const FIRST=['Mara','Tobias','Ines','Callum','Dana','Wren','Silas','Odette','Reuben','Nell','Hollis','Petra','Jory','Linnea','Ansel','Marguerite'];
+const LAST=['Voss','Hallett','Quill','Brandt','Okoye','Marlow','Finch','Strand','Delacroix','Penhale','Rourke','Thorne','Vasquez','Greer','Abbott','Salt'];
+const WARD=[['indigo wool peacoat','indigo','#3a4a9a'],['mustard oilskin coat','mustard','#c9a02a'],['charcoal duffel coat','charcoal','#4a4f58'],['green waxed jacket','green','#3f7a4a'],['crimson scarf and cardigan','crimson','#b02a3a'],['teal fleece pullover','teal','#2a8a8a']];
+const SHOEKIND=['work boots','sea boots','brogues','deck shoes','trainers','rubber clogs'];
+const BLOOD=['A+','B+','O+','AB+'];
+const MOT_C=['{V} was about to expose the forged cargo manifests that kept you in business.','{V} refused to sell you the harbour deed you needed to cover a debt.','{V} had blackmailed you for years over an old insurance fire.','{V} was about to cut you out of the will you had counted on.'];
+const MOT_D=['Argued bitterly with {V} over unpaid rent.','Had a short, ended affair with {V}.','Lost a job after a complaint from {V}.','Owed {V} money, and had repaid only half.'];
+const SECRET=['was meeting a loan shark that evening and lied to avoid explaining.','had slipped out to phone a lawyer about divorce.','had been drinking and hiding it from the family.','was job hunting behind the employer\'s back.'];
+const TPL=[
+ {id:'light',name:'Gull Point Lighthouse',tag:'the keeper\'s cottage on Gull Point',rooms:['Kitchen','Hall','Study','Bedroom','Lamp Room','Storeroom'],tint:['#a9825a','#9a7650','#8f6a46','#a98062','#7f7468','#6f6455'],body:[4,470,500],
+  vroles:['lighthouse keeper','harbour historian','retired ferry captain'],sroles:['Harbour master','Night-shift fisherman','Heritage trust director','Supply boat skipper','Keeper\'s nephew','Marine painter'],
+  weapons:[['Brass lamp-oil can','A heavy brass can, dented on one side.'],['Ship\'s bell clapper','Iron, wrapped in an oily rag.'],['Marlinspike','Tapered steel with a tarred grip.']],
+  places:['the Anchor Bar','the ferry slip','the fish market','the headland path'],
+  F:'counter,Counter,60,58,250,38;table,Kitchen table,120,150,110,80;shelf,Pantry,325,58,26,150;rug,,400,100,200,120;sofa,Bench,520,250,100,32;shelf,Coat rack,380,58,70,24;desk,Chart desk,690,70,190,70;shelf,Bookshelf,926,150,26,120;chair,,760,160,38,38;round,Globe,680,225,50,50;bed,Bed,60,330,130,180;shelf,Wardrobe,60,572,150,36;table,Nightstand,200,340,42,42;rug,,230,470,120,110;lamp,Fresnel lens,590,380,0,0;crate,Sea chest,380,600,110,40;shelf,Tool rack,560,330,70,24;crate,Crates,666,330,90,70;round,Barrels,860,345,60,60;desk,Workbench,680,580,200,50;rug,Nets,910,470,40,120',
+  S:[[170,200,'Kitchen table'],[120,78,'Counter'],[560,265,'Bench'],[500,170,'Hall rug'],[790,100,'Chart desk'],[702,250,'Globe'],[222,361,'Nightstand'],[120,540,'Bed'],[420,620,'Sea chest'],[760,605,'Workbench'],[700,370,'Crates'],[470,430,'Lamp Room floor']]},
+ {id:'marina',name:'Marrow Marina Boathouse',tag:'the boathouse at Marrow Marina',rooms:['Chandlery','Office','Galley','Workshop','Slip','Locker Room'],tint:['#7b8186','#8a8a7e','#8a7b6a','#707478','#2d5a72','#6a7378'],body:[4,500,470],
+  vroles:['marina owner','sailmaker','harbour pilot'],sroles:['Boatyard foreman','Charter skipper','Yacht broker','Dockside chef','Marine insurer','Regatta organiser'],
+  weapons:[['Boat hook','Aluminium pole with a bent brass hook.'],['Winch handle','Chrome, heavy, scratched at the end.'],['Mallet','A shipwright\'s mallet with a split head.']],
+  places:['the Salt Cellar café','the fuel dock','the yacht club','the car park'],
+  F:'shelf,Chart rack,60,58,240,30;crate,Rope coils,70,200,80,60;table,Counter,200,170,110,60;desk,Booking desk,690,60,170,60;desk,Desk,400,70,150,70;chair,,450,150,36,36;shelf,Files,584,58,40,120;counter,Galley,660,58,280,38;table,Table,720,170,120,80;sofa,Bench,880,230,60,40;desk,Workbench,60,570,210,50;machine,Lathe,60,330,120,60;crate,Sails,240,340,100,70;round,Barrel,300,540,50,50;water,Slip,400,350,200,170;crate,Dock box,380,600,80,44;shelf,Lockers,660,330,26,200;table,Bench,730,470,110,36;crate,Kit bags,720,570,170,50;round,Bin,900,340,40,40',
+  S:[[250,200,'Counter'],[110,230,'Rope coils'],[500,110,'Desk'],[780,200,'Table'],[780,80,'Booking desk'],[160,575,'Workbench'],[290,370,'Sails'],[330,560,'Barrel'],[420,620,'Dock box'],[790,490,'Bench'],[760,590,'Kit bags'],[400,330,'Slip edge']]},
+ {id:'cannery',name:'Brine & Co. Cannery',tag:'the offices of Brine & Co. Cannery',rooms:['Reception','Accounts','Boardroom','Packing Floor','Cold Store','Loading Dock'],tint:['#7f9a8a','#8aa08f','#6a7f6f','#8d9594','#7aa0b0','#7a7f84'],body:[3,200,480],
+  vroles:['cannery owner','head accountant','plant manager'],sroles:['Shift supervisor','Fleet agent','Union rep','Company lawyer','Quality inspector','Night watchman'],
+  weapons:[['Fish club','Short oak club, stained dark.'],['Can seamer crank','Cast iron, with a greasy handle.'],['Ice hook','Steel hook on a short pole.']],
+  places:['the Dockside Diner','the Rotary lodge','the night shift canteen','the bus depot'],
+  F:'desk,Reception desk,70,60,150,56;sofa,Waiting sofa,250,230,80,34;round,Plant,70,240,36,36;desk,Ledger desk,400,66,200,60;shelf,Archive,400,230,200,40;chair,,470,150,36,36;table,Boardroom table,680,110,230,110;chair,,700,235,34,34;shelf,Cabinet,930,70,22,160;machine,Canning line,70,340,280,60;table,Packing bench,90,450,220,60;crate,Pallets,70,560,120,70;crate,Tins,240,560,100,70;machine,Freezer,380,340,100,70;crate,Ice blocks,520,330,100,80;shelf,Racking,380,580,240,40;crate,Shipping crates,660,340,120,80;machine,Forklift,820,350,100,80;crate,Barrels,670,560,100,70;table,Weigh scale,840,550,80,60',
+  S:[[140,95,'Reception desk'],[290,247,'Waiting sofa'],[500,95,'Ledger desk'],[500,250,'Archive'],[790,165,'Boardroom table'],[200,425,'Canning line'],[200,480,'Packing bench'],[130,590,'Pallets'],[430,375,'Freezer'],[570,370,'Ice blocks'],[720,380,'Shipping crates'],[880,590,'Weigh scale']]},
+ {id:'station',name:'Tidepool Research Station',tag:'the Tidepool Research Station',rooms:['Wet Lab','Corridor','Dry Lab','Tank Hall','Specimen Room','Quarters'],tint:['#9fb4b8','#a8b6b8','#b0b8b4','#6f94a6','#8fa6a0','#9a9a8a'],body:[3,200,500],
+  vroles:['marine biologist','station director','visiting ecologist'],sroles:['Lab technician','Grad student','Boat engineer','Grant officer','Diving instructor','Night cleaner'],
+  weapons:[['Specimen jar','Heavy glass, cracked, smells of formalin.'],['Dive weight','A 4 kg lead weight, belt still attached.'],['Fire axe','Red-handled, from the corridor case.']],
+  places:['the Dune Café','the beach hut','the ferry bar','the cliff trail'],
+  F:'counter,Wet bench,60,58,250,38;machine,Centrifuge,90,150,70,50;table,Sink table,200,170,110,60;shelf,Reagents,330,58,22,150;rug,,400,110,200,110;shelf,Fire case,420,58,60,24;sofa,Bench,520,250,90,32;desk,Analysis desk,690,60,190,60;machine,Sequencer,690,170,100,60;shelf,Archive,928,150,24,120;chair,,830,170,36,36;water,Main tank,60,340,260,150;crate,Feed bins,70,560,110,60;table,Prep table,230,560,110,50;shelf,Specimens,380,330,250,30;table,Dissecting table,440,400,140,70;machine,Fridge,380,580,100,50;sofa,Bunk,670,330,110,60;table,Locker,850,340,60,100;crate,Kit,700,560,130,60;round,Stool,880,560,40,40',
+  S:[[185,78,'Wet bench'],[125,175,'Centrifuge'],[255,200,'Sink table'],[550,265,'Bench'],[780,95,'Analysis desk'],[740,200,'Sequencer'],[200,410,'Main tank'],[120,590,'Feed bins'],[285,585,'Prep table'],[510,435,'Dissecting table'],[725,360,'Bunk'],[760,590,'Kit']]}
+];
+const ROOMGRID=[[40,40,320,260],[360,40,280,260],[640,40,320,260],[40,300,320,360],[360,300,280,360],[640,300,320,360]];
+const TOOLS=['look','dust','uv'];
+const TOOLNAME={look:'Light',dust:'Powder',uv:'UV lamp'};
+const HOUR=n=>{const m=n%60;return ((Math.floor(n/60)%12)||12)+':'+(m<10?'0':'')+m};
+
+/* ---------- case generator ---------- */
+function gen(seed){
+ const R=mulb(hash(seed)),pick=a=>a[(R()*a.length)|0],shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=(R()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+ const tp=pick(TPL),names=[];
+ while(names.length<5){const n=pick(FIRST)+' '+pick(LAST);if(!names.includes(n)&&!names.some(x=>x.split(' ')[0]===n.split(' ')[0]))names.push(n)}
+ const V=names[0],vrole=pick(tp.vroles),weapon=pick(tp.weapons);
+ const roles=shuf(tp.sroles).slice(0,4),ward=shuf(WARD),blood=shuf(BLOOD),sizes=shuf([7,8,9,10,11,12]).slice(0,4);
+ const cu=(R()*4)|0,others=shuf([0,1,2,3].filter(i=>i!==cu)),h1=others[0],h2=others[1],w=others[2];
+ const scars=shuf([0,1,2,3]),pats=[0,1,2,0].map(()=>(R()*3)|0);
+ const mc=shuf(MOT_C)[0],md=shuf(MOT_D),sec=shuf(SECRET),places=shuf(tp.places);
+ const T=1320+30+((R()*20)|0);          // placeholder minutes replaced below
+ const tod=22*60+30+((R()*20)|0);      // time of death, 10:30-10:50 pm
+ const S=[];
+ const bloodTypes=[0,1,2,3].map(()=>null);
+ // blood: culprit and h2 share; h1 and w differ
+ const rest=blood.filter(b=>b!==blood[0]);bloodTypes[cu]=blood[0];bloodTypes[h2]=blood[0];bloodTypes[h1]=rest[0];bloodTypes[w]=rest[1];
+ // shoes: culprit and h1 share
+ const shoeS=[0,0,0,0];shoeS[cu]=sizes[0];shoeS[h1]=sizes[0];shoeS[h2]=sizes[1];shoeS[w]=sizes[2];
+ for(let i=0;i<4;i++){
+  const nm=names[i+1];
+  S.push({i,name:nm,first:nm.split(' ')[0],role:roles[i],ward:ward[i],shoeSize:shoeS[i],shoeKind:SHOEKIND[(R()*6)|0],blood:bloodTypes[i],scar:scars[i],pat:pats[i],
+   motive:(i===cu?mc:md[i===h1?0:i===h2?1:2]).replace('{V}',V),culprit:i===cu,
+   alibiPlace:places[i],seed:hash(seed+nm)});
+ }
+ const bodyRoom=tp.rooms[tp.body[0]];
+ S[cu].alibi='I was at '+places[cu]+' all evening. Ask anyone there.';
+ S[h1].alibi='I was at '+places[h1]+' until near eleven. '+S[w].first+' was with me.';
+ S[h2].alibi='I was at '+places[h2]+'. I left around ten forty-five.';
+ S[w].alibi='I was at '+places[h1]+' with '+S[h1].first+', most of the night.';
+ // statements for "Anyone else around?"
+ S[w].other='I saw '+S[cu].first+' hurrying toward the '+bodyRoom+' around '+HOUR(tod-18)+'. They looked flustered. I would swear to it.';
+ S[h1].other=S[h2].first+' went past me about nine thirty, headed for '+places[h2]+'. That is all I saw.';
+ S[h2].other='I heard '+V.split(' ')[0]+' arguing with someone in the '+bodyRoom+' close to ten thirty. A low voice. I did not see who.';
+ S[cu].other='Honestly? I saw '+S[h1].first+' near the '+bodyRoom+' about '+HOUR(tod-10)+'. I did not want to say.';
+ // clue reactions: what each innocent says when shown implicating evidence
+ S[h1].shoeReact='Those are my size, sure. I came by earlier, around eight, for a cup of tea. Check the mug. I was gone long before ten.';
+ S[h1].mugReact='That is my mug. I had tea with '+V.split(' ')[0]+' at eight. I even washed up, I thought.';
+ S[h2].bloodReact='Same blood type, and half the town shares it. I cut my thumb at '+places[h2]+' yesterday, ask the nurse there.';
+ S[w].tip='I only know what I saw.';
+ for(const j of [h1,h2,w])S[j].secret=sec[j===h1?0:j===h2?1:2];
+ S[cu].crack='All right. '+S[cu].motive+' I only meant to talk. It went wrong in a second. I never meant for the sea to take the evidence.';
+ // evidence
+ const spots=shuf(tp.S.map((s,i)=>i)).slice(0,7);
+ const E=[
+  {id:'weapon',name:weapon[0],desc:weapon[1],tool:'look',kind:'print',who:cu},
+  {id:'shoe',name:'Shoe print',desc:'A clear, wet print on the floor.',tool:'dust',kind:'shoe'},
+  {id:'blood',name:'Blood smear',desc:'A thumb-sized smear, nearly dry.',tool:'uv',kind:'blood'},
+  {id:'fiber',name:'Wool fibres',desc:'Threads snagged on a rough edge.',tool:'look',kind:'fiber'},
+  {id:'watch',name:'Smashed wristwatch',desc:'The crystal is cracked, hands stopped.',tool:'look',kind:'time'},
+  {id:'mug',name:'Tea mug',desc:'Half-finished, still faintly scented.',tool:'dust',kind:'print',who:h1},
+  {id:'glow',name:'Glowing puddle',desc:'Seawater. The room is nowhere near the sea.',tool:'uv',kind:'glow'}
+ ].map((e,i)=>Object.assign(e,{spot:spots[i],got:false,done:false,no:0}));
+ return {seed,tp,V,vrole,weapon,S,cu,h1,h2,w,tod,E,bodyRoom,loc:tp.name,found:HOUR(tod+32),finder:S[w].first,
+  facts:{print:S[cu].name,shoe:sizes[0],blood:blood[0],fiber:ward[cu]}};
+}
+
+/* ---------- map painting ---------- */
+const DOORS=[[354,150,12,60],[634,150,12,60],[160,294,60,12],[460,294,80,12],[760,294,70,12],[354,440,12,60],[634,440,12,60],[470,654,60,12]];
+function parseF(str){return str.split(';').map(s=>{const a=s.split(',');return{t:a[0],l:a[1],x:+a[2],y:+a[3],w:+a[4],h:+a[5]}})}
+function rr(g,x,y,w,h,r){g.beginPath();g.roundRect(x,y,w,h,r)}
+function floor(g,tp,i,r){const [x,y,w,h]=r;g.fillStyle=tp.tint[i];g.fillRect(x,y,w,h);const R=mulb(i*13+7);
+ if(tp.id==='light'){g.strokeStyle='rgba(40,22,8,.28)';g.lineWidth=1;for(let yy=y+14;yy<y+h;yy+=14){g.beginPath();g.moveTo(x,yy);g.lineTo(x+w,yy);g.stroke()}
+  for(let k=0;k<26;k++){const px=x+R()*w,py=y+((R()*h/14)|0)*14;g.beginPath();g.moveTo(px,py);g.lineTo(px,py+14);g.stroke()}}
+ else if(tp.id==='marina'){for(let k=0;k<260;k++){g.fillStyle='rgba(20,26,30,'+(.06+R()*.1)+')';g.fillRect(x+R()*w,y+R()*h,2+R()*3,2)}g.strokeStyle='rgba(10,14,18,.25)';g.strokeRect(x+4,y+4,w-8,h-8)}
+ else{g.strokeStyle='rgba(20,34,40,.22)';g.lineWidth=1;for(let xx=x;xx<=x+w;xx+=40){g.beginPath();g.moveTo(xx,y);g.lineTo(xx,y+h);g.stroke()}for(let yy=y;yy<=y+h;yy+=40){g.beginPath();g.moveTo(x,yy);g.lineTo(x+w,yy);g.stroke()}
+  for(let k=0;k<8;k++){g.fillStyle='rgba(255,255,255,.05)';g.fillRect(x+((R()*w/40)|0)*40,y+((R()*h/40)|0)*40,40,40)}}
+ const gg=g.createLinearGradient(x,y,x+w,y+h);gg.addColorStop(0,'rgba(255,230,180,.08)');gg.addColorStop(1,'rgba(0,0,0,.18)');g.fillStyle=gg;g.fillRect(x,y,w,h)}
+function furn(g,f){const {t,x,y,w,h}=f;g.save();
+ if(t==='rug'){g.fillStyle='rgba(120,46,50,.55)';rr(g,x,y,w,h,8);g.fill();g.strokeStyle='rgba(235,200,150,.5)';g.lineWidth=3;rr(g,x+6,y+6,w-12,h-12,5);g.stroke();g.restore();return}
+ if(t==='lamp'){g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.arc(x+4,y+6,48,0,TAU);g.fill();[48,38,26,12].forEach((r,i)=>{g.fillStyle=['#8a6a2a','#c8a050','#e6c878','#fff0b0'][i];g.beginPath();g.arc(x,y,r,0,TAU);g.fill()});g.restore();return}
+ if(t==='water'){const gr=g.createLinearGradient(x,y,x+w,y+h);gr.addColorStop(0,'#1c4a68');gr.addColorStop(1,'#10304a');g.fillStyle='rgba(0,0,0,.35)';rr(g,x-3,y-3,w+6,h+6,10);g.fill();g.fillStyle=gr;rr(g,x,y,w,h,8);g.fill();g.strokeStyle='rgba(180,230,255,.22)';g.lineWidth=1.5;for(let k=0;k<7;k++){g.beginPath();g.moveTo(x+10,y+16+k*(h-30)/6);g.bezierCurveTo(x+w*.3,y+6+k*(h-30)/6,x+w*.6,y+26+k*(h-30)/6,x+w-10,y+14+k*(h-30)/6);g.stroke()}g.restore();return}
+ g.fillStyle='rgba(0,0,0,.32)';if(t==='round'||t==='chair'){g.beginPath();g.ellipse(x+w/2+3,y+h/2+5,w/2,h/2,0,0,TAU);g.fill()}else{rr(g,x+4,y+6,w,h,6);g.fill()}
+ const C={table:'#6a4c32',desk:'#5a4030',bed:'#6a7a92',sofa:'#47566c',shelf:'#4a3a2a',crate:'#7c5c38',counter:'#8d9296',round:'#6a5a46',chair:'#4a4036',machine:'#56626c'}[t]||'#666';
+ g.fillStyle=C;if(t==='round'||t==='chair'){g.beginPath();g.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,TAU);g.fill()}else{rr(g,x,y,w,h,t==='shelf'?2:6);g.fill()}
+ g.strokeStyle='rgba(255,255,255,.14)';g.lineWidth=1.4;
+ if(t==='table'||t==='desk'){rr(g,x+4,y+4,w-8,h-8,4);g.stroke();if(t==='desk'){g.fillStyle='rgba(0,0,0,.2)';g.fillRect(x+w-30,y+8,22,h-16)}}
+ else if(t==='bed'){g.fillStyle='#e8eef4';rr(g,x+8,y+8,w-16,34,8);g.fill();g.fillStyle='rgba(30,40,70,.45)';rr(g,x+4,y+54,w-8,h-58,6);g.fill()}
+ else if(t==='sofa'){for(let k=1;k<3;k++){g.beginPath();g.moveTo(x+w*k/3,y+4);g.lineTo(x+w*k/3,y+h-4);g.stroke()}}
+ else if(t==='shelf'){const hz=w>h;for(let k=1;k<(hz?w/16:h/16);k++){g.beginPath();if(hz){g.moveTo(x+k*16,y);g.lineTo(x+k*16,y+h)}else{g.moveTo(x,y+k*16);g.lineTo(x+w,y+k*16)}g.stroke()}}
+ else if(t==='crate'){g.beginPath();g.moveTo(x+4,y+4);g.lineTo(x+w-4,y+h-4);g.moveTo(x+w-4,y+4);g.lineTo(x+4,y+h-4);g.stroke();rr(g,x+3,y+3,w-6,h-6,3);g.stroke()}
+ else if(t==='counter'){g.fillStyle='#4a5258';g.beginPath();g.ellipse(x+w*.7,y+h/2,22,11,0,0,TAU);g.fill();g.strokeStyle='#9aa4aa';g.stroke()}
+ else if(t==='machine'){g.fillStyle='#c8d0d4';[0,1,2].forEach(k=>{g.beginPath();g.arc(x+12+k*14,y+12,4,0,TAU);g.fill()});g.fillStyle='rgba(0,0,0,.25)';g.fillRect(x+6,y+24,w-12,h-32)}
+ if(f.l){g.fillStyle='rgba(255,246,220,.55)';g.font='600 9px "IBM Plex Mono",monospace';g.textAlign='center';g.fillText(f.l.toUpperCase(),x+w/2,y+h/2+3)}
+ g.restore()}
+function chalkBody(g,x,y,seed){const R=mulb(seed);g.save();g.translate(x,y);g.rotate((R()-.5)*.9);g.strokeStyle='rgba(245,245,235,.72)';g.lineWidth=3;g.lineCap='round';g.lineJoin='round';
+ const w=()=>(R()-.5)*3;g.beginPath();g.ellipse(0,-44,13+w(),14,0,0,TAU);g.stroke();
+ g.beginPath();g.moveTo(-14,-28);g.lineTo(-22,6);g.lineTo(-10,44+w());g.lineTo(-3,40);g.lineTo(0,18);g.lineTo(4,40);g.lineTo(12,44);g.lineTo(22,6+w());g.lineTo(14,-28);g.closePath();g.stroke();
+ g.beginPath();g.moveTo(-14,-24);g.lineTo(-40,-6);g.lineTo(-48,16);g.moveTo(14,-24);g.lineTo(38,-12);g.lineTo(52,-2);g.stroke();g.restore()}
+function drawMap(g,cs,C){const tp=C.tp;g.save();g.scale(cs,cs);
+ g.fillStyle='#091219';g.fillRect(0,0,1000,700);
+ ROOMGRID.forEach((r,i)=>floor(g,tp,i,r));
+ parseF(tp.F).sort((a,b)=>(a.t==='rug'?0:1)-(b.t==='rug'?0:1)).forEach(f=>furn(g,f));
+ g.strokeStyle='#161d24';g.lineWidth=12;g.lineJoin='miter';ROOMGRID.forEach(r=>g.strokeRect(r[0],r[1],r[2],r[3]));
+ DOORS.forEach(d=>{g.fillStyle='#b99a6a';g.fillRect(d[0],d[1],d[2],d[3]);g.fillStyle='rgba(0,0,0,.25)';g.fillRect(d[2]>d[3]?d[0]:d[0]+d[2]/2-1,d[2]>d[3]?d[1]+d[3]/2-1:d[1],d[2]>d[3]?d[2]:2,d[2]>d[3]?2:d[3])});
+ g.fillStyle='rgba(255,246,220,.42)';g.font='700 11px "Archivo Narrow","Trebuchet MS",sans-serif';g.textAlign='left';
+ ROOMGRID.forEach((r,i)=>{g.save();g.letterSpacing='2px';g.fillText(tp.rooms[i].toUpperCase(),r[0]+16,r[1]+22);g.restore()});
+ g.fillStyle='rgba(255,220,120,.8)';g.font='700 10px "Archivo Narrow",sans-serif';g.textAlign='center';g.fillText('ENTRANCE',500,688);g.beginPath();g.moveTo(490,672);g.lineTo(510,672);g.lineTo(500,664);g.fill();
+ chalkBody(g,tp.body[1],tp.body[2],hash(C.seed));
+ g.restore()}
+
+/* ---------- portraits + prints ---------- */
+function avatar(cv,s,ward,dead){const g=cv.getContext('2d'),W=cv.width,H=cv.height,R=mulb(s);g.clearRect(0,0,W,H);
+ const bg=g.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#2a3a4a');bg.addColorStop(1,'#101c28');g.fillStyle=bg;g.fillRect(0,0,W,H);
+ const skin=['#f0cfb0','#d8a47c','#a8714a','#7a4c2e','#e6bd98'][(R()*5)|0],hair=['#1c1410','#4a2a18','#8a5a2a','#c9a86a','#9a9a9a','#7a2a1a'][(R()*6)|0],style=(R()*4)|0;
+ g.fillStyle=ward;g.beginPath();g.ellipse(W/2,H+8,W*.46,H*.4,0,Math.PI,TAU);g.fill();
+ g.fillStyle=skin;g.fillRect(W/2-W*.07,H*.58,W*.14,H*.15);
+ if(style===3){g.fillStyle=hair;g.beginPath();g.ellipse(W/2,H*.46,W*.25,H*.3,0,0,TAU);g.fill()}
+ g.fillStyle=skin;g.beginPath();g.ellipse(W/2,H*.44,W*.19,H*.24,0,0,TAU);g.fill();
+ g.fillStyle=hair;if(style===0||style===3){g.beginPath();g.ellipse(W/2,H*.3,W*.2,H*.13,0,Math.PI,TAU);g.fill()}
+ if(style===1){g.beginPath();g.ellipse(W/2,H*.3,W*.2,H*.12,0,Math.PI,TAU);g.fill();g.beginPath();g.arc(W*.7,H*.28,W*.07,0,TAU);g.fill()}
+ if(style===2){g.beginPath();g.ellipse(W/2,H*.28,W*.21,H*.1,0,Math.PI,TAU);g.fill();g.fillRect(W*.3,H*.28,W*.05,H*.22);g.fillRect(W*.65,H*.28,W*.05,H*.22)}
+ g.fillStyle='#14161c';g.beginPath();g.arc(W*.43,H*.45,W*.016,0,TAU);g.arc(W*.57,H*.45,W*.016,0,TAU);g.fill();
+ g.strokeStyle='rgba(60,30,20,.7)';g.lineWidth=1.6;g.beginPath();g.moveTo(W*.45,H*.55);g.quadraticCurveTo(W/2,H*.58,W*.55,H*.55);g.stroke();
+ if(R()<.4){g.strokeStyle='#d8d8d8';g.lineWidth=1.4;[W*.43,W*.57].forEach(x=>{g.beginPath();g.arc(x,H*.45,W*.045,0,TAU);g.stroke()});g.beginPath();g.moveTo(W*.475,H*.45);g.lineTo(W*.525,H*.45);g.stroke()}
+ if(dead){g.strokeStyle='rgba(255,255,255,.12)';g.lineWidth=2;g.beginPath();g.moveTo(0,0);g.lineTo(W,H);g.stroke()}}
+function printArt(cv,pat,scar,col,bgc,noise){const g=cv.getContext('2d'),W=cv.width,H=cv.height,cx=W/2,cy=H/2,r=Math.min(W,H)*.43;g.clearRect(0,0,W,H);g.fillStyle=bgc||'#e9e4d4';g.fillRect(0,0,W,H);
+ g.save();g.beginPath();g.ellipse(cx,cy,r*.8,r,0,0,TAU);g.clip();g.strokeStyle=col||'#2a2418';g.lineWidth=Math.max(1.4,W/60);g.lineCap='round';
+ if(pat===0){for(let k=1;k<=9;k++){g.beginPath();g.ellipse(cx,cy,r*.8*k/9,r*k/9*.95,0,0,TAU);g.stroke()}}
+ else if(pat===1){for(let k=0;k<9;k++){const rx=r*.8*(9-k)/9*.9;g.beginPath();g.moveTo(cx-rx,cy+r);g.lineTo(cx-rx,cy-r*.1);g.ellipse(cx,cy-r*.1,rx,r*.55*(9-k)/9+r*.1,0,Math.PI,TAU);g.lineTo(cx+rx,cy+r);g.stroke()}}
+ else{for(let k=0;k<10;k++){const y0=cy+(k-5)*r*.2+r*.3;g.beginPath();g.moveTo(cx-r,y0+r*.14);g.quadraticCurveTo(cx,y0-r*.45+k*r*.02,cx+r,y0+r*.14);g.stroke()}}
+ const a=scar*Math.PI/4+.35;g.strokeStyle=bgc||'#e9e4d4';g.lineWidth=Math.max(4,W/22);g.beginPath();g.moveTo(cx-Math.cos(a)*r*.55,cy-Math.sin(a)*r*.55);g.lineTo(cx+Math.cos(a)*r*.55,cy+Math.sin(a)*r*.55);g.stroke();
+ if(noise){const R=mulb(noise);g.fillStyle=bgc||'#e9e4d4';for(let k=0;k<14;k++){g.beginPath();g.arc(cx+(R()-.5)*r*1.5,cy+(R()-.5)*r*1.8,2+R()*5,0,TAU);g.fill()}}
+ g.restore();g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=2;g.beginPath();g.ellipse(cx,cy,r*.8,r,0,0,TAU);g.stroke()}
+
+/* ---------- game state ---------- */
+let C=null,P=null,started=false;
+const KEY='casefile1';
+const cv=$('cv'),g=cv.getContext('2d');
+let AC=null;
+function tone(f,d,v,type){try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),gn=AC.createGain(),n=AC.currentTime;o.type=type||'sine';o.frequency.value=f;gn.gain.setValueAtTime(0,n);gn.gain.linearRampToValueAtTime(v||.07,n+.02);gn.gain.exponentialRampToValueAtTime(.0001,n+d);o.connect(gn);gn.connect(AC.destination);o.start(n);o.stop(n+d+.05)}catch(e){}}
+const ding=()=>{tone(660,.5);setTimeout(()=>tone(990,.6),90)};
+function loadRec(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return{}}}
+function saveRec(seed,stars){try{const r=loadRec();r[seed]=Math.max(r[seed]||0,stars);localStorage.setItem(KEY,JSON.stringify(r))}catch(e){}}
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const caseNo=seed=>'PM-'+(hash(seed)%9000+1000);
+const sus=i=>C.S[i];
+const T0=()=>HOUR(C.tod);
+function newGame(seed){
+ C=gen(seed);
+ P={tool:'look',tray:[],notes:[],unlock:{shoe:false,blood:false,fiber:false,time:false},hist:{},asked:{},press:[0,0,0,0],seenPress:{},cracked:false,testi:{},hints:0,tries:0,mistakes:0,t0:Date.now(),chat:[[],[],[],[]],lamp:{x:500,y:640,tx:500,ty:640},end:false};
+ built=false;
+}
+
+/* ---------- scene canvas ---------- */
+let W=360,H=600,dpr=1,scale=.6,camX=0,camY=0,mapCv=null,built=false,mapCS=0,tNow=0,lastTs=0,toastT=0;
+const LAMP=120;
+function layout(){const r=cv.getBoundingClientRect();W=Math.max(200,r.width);H=Math.max(200,r.height);dpr=Math.min(2,devicePixelRatio||1);cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+ const sFit=Math.min(W/1000,H/700),sMin=W/480;scale=Math.max(sFit,Math.min(sMin,1.5));if(C)built=false}
+addEventListener('resize',layout);
+function ensureMap(){if(built||!C)return;const cs=Math.min(2,Math.max(1,scale*dpr));mapCv=document.createElement('canvas');mapCv.width=Math.ceil(1000*cs);mapCv.height=Math.ceil(700*cs);drawMap(mapCv.getContext('2d'),cs,C);built=true}
+const dist=(a,b,c,d)=>Math.hypot(a-c,b-d);
+function spotXY(e){const s=C.tp.S[e.spot];return[s[0],s[1]]}
+function lampR(){return LAMP*(P.tool==='look'?1:.82)}
+function render(t){g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#070d13';g.fillRect(0,0,W,H);if(!C||!P)return;ensureMap();
+ const vw=W/scale,vh=H/scale,L=P.lamp;L.x+=(L.tx-L.x)*.3;L.y+=(L.ty-L.y)*.3;
+ const tx=vw>=1040?(1000-vw)/2:clamp(L.x-vw/2,-20,1020-vw),ty=vh>=740?(700-vh)/2:clamp(L.y-vh/2,-20,720-vh);camX+=(tx-camX)*.12;camY+=(ty-camY)*.12;
+ g.drawImage(mapCv,-camX*scale,-camY*scale,1000*scale,700*scale);
+ g.setTransform(dpr*scale,0,0,dpr*scale,-camX*scale*dpr,-camY*scale*dpr);
+ const R=lampR();
+ // evidence tents + glints
+ C.E.forEach((e,i)=>{const [x,y]=spotXY(e);
+  if(e.got){g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(x+2,y+8,11,4,0,0,TAU);g.fill();g.fillStyle='#f2c230';g.beginPath();g.moveTo(x-11,y+7);g.lineTo(x,y-14);g.lineTo(x+11,y+7);g.closePath();g.fill();g.fillStyle='#1c1a12';g.font='800 11px "Archivo Narrow",sans-serif';g.textAlign='center';g.fillText(e.no,x,y+5);return}
+  const d=dist(x,y,L.x,L.y);if(d>R*.96||e.tool!==P.tool)return;const a=clamp(1-(d/R-.55)/.4,0,1),p=.6+.4*Math.sin(t*4+i);
+  g.save();g.globalAlpha=a;
+  if(e.tool==='look'){const gr=g.createRadialGradient(x,y,0,x,y,26);gr.addColorStop(0,'rgba(255,240,170,'+.85*p+')');gr.addColorStop(1,'rgba(255,220,120,0)');g.fillStyle=gr;g.fillRect(x-28,y-28,56,56);g.strokeStyle='rgba(255,250,210,.95)';g.lineWidth=1.6;g.beginPath();g.moveTo(x-9*p,y);g.lineTo(x+9*p,y);g.moveTo(x,y-9*p);g.lineTo(x,y+9*p);g.stroke()}
+  else if(e.tool==='dust'){g.fillStyle='rgba(235,240,245,.55)';for(let k=0;k<5;k++){g.beginPath();g.ellipse(x+Math.sin(k*2)*7,y+Math.cos(k*3)*6,10-k,6,k,0,TAU);g.fill()}g.strokeStyle='rgba(40,50,60,.55)';g.lineWidth=1;for(let k=-2;k<=2;k++){g.beginPath();g.arc(x,y,5+k*2.2+3,.2,2.9);g.stroke()}}
+  else{const gr=g.createRadialGradient(x,y,0,x,y,30);gr.addColorStop(0,'rgba(220,190,255,'+p+')');gr.addColorStop(.5,'rgba(150,90,255,'+.5*p+')');gr.addColorStop(1,'rgba(120,60,255,0)');g.fillStyle=gr;g.fillRect(x-32,y-32,64,64)}
+  g.restore()});
+ // darkness
+ g.setTransform(dpr,0,0,dpr,0,0);const lx=(L.x-camX)*scale,ly=(L.y-camY)*scale,rr_=R*scale;
+ const dk=g.createRadialGradient(lx,ly,rr_*.25,lx,ly,rr_*1.08);dk.addColorStop(0,'rgba(3,7,12,0)');dk.addColorStop(.68,'rgba(3,7,12,.35)');dk.addColorStop(1,'rgba(3,7,12,.86)');g.fillStyle=dk;g.fillRect(0,0,W,H);
+ if(P.tool!=='look'){const tc=P.tool==='uv'?'110,60,255':'230,236,244',tg=g.createRadialGradient(lx,ly,0,lx,ly,rr_);tg.addColorStop(0,'rgba('+tc+','+(P.tool==='uv'?.30:.14)+')');tg.addColorStop(1,'rgba('+tc+',0)');g.fillStyle=tg;g.beginPath();g.arc(lx,ly,rr_,0,TAU);g.fill()}
+ else{const wg=g.createRadialGradient(lx,ly,0,lx,ly,rr_);wg.addColorStop(0,'rgba(255,214,140,.12)');wg.addColorStop(1,'rgba(255,214,140,0)');g.fillStyle=wg;g.beginPath();g.arc(lx,ly,rr_,0,TAU);g.fill()}
+ g.strokeStyle='rgba(255,236,190,.35)';g.lineWidth=1.2;g.beginPath();g.arc(lx,ly,6,0,TAU);g.stroke()}
+function frame(ts){requestAnimationFrame(frame);const dt=Math.min(.05,(ts-lastTs)/1000||0);lastTs=ts;tNow+=dt;if(started&&C&&!$('scene').hidden)render(tNow);if(started&&!$('scene').hidden&&P&&!P.end)$('clock').textContent=clockTxt()}
+const clockTxt=()=>{const s=Math.floor((Date.now()-P.t0)/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const sceneActive=()=>started&&P&&!P.end&&overlays().every(o=>o.hidden);
+const overlays=()=>[...document.querySelectorAll('.ov')];
+function worldPt(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/scale+camX,(e.clientY-r.top)/scale+camY]}
+let down=false;
+cv.addEventListener('pointerdown',e=>{if(!sceneActive())return;down=true;const[x,y]=worldPt(e);P.lamp.tx=clamp(x,0,1000);P.lamp.ty=clamp(y,0,700);tryCollect(x,y);try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener('pointermove',e=>{if(!sceneActive())return;if(down||e.pointerType==='mouse'){const[x,y]=worldPt(e);P.lamp.tx=clamp(x,0,1000);P.lamp.ty=clamp(y,0,700)}});
+cv.addEventListener('pointerup',()=>{down=false});cv.addEventListener('pointercancel',()=>{down=false});
+function toast(s){const e=$('toast');e.textContent=s;e.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>e.classList.remove('show'),3200)}
+function tryCollect(x,y){let near=null;
+ C.E.forEach(e=>{if(e.got)return;const[sx,sy]=spotXY(e);if(dist(sx,sy,x,y)<38&&dist(sx,sy,P.lamp.tx,P.lamp.ty)<lampR()*.96)near=e});
+ if(!near)return;
+ if(near.tool!==P.tool){toast('Nothing shows under this light. Try another tool.');return}
+ collect(near)}
+const LIN=['Dr. Lin','Det. Reyes'];
+function collect(e){if(e.got)return;e.got=true;e.no=P.tray.length+1;P.tray.push(e.id);ding();renderTray();
+ const quips={weapon:'Heavy. Someone swung this with intent.',shoe:'A wet print, size and tread intact. Cast it.',blood:'Still tacky. Not the victim\'s pattern, I think.',fiber:'Wool, dyed. Whoever it was, they wore it close.',watch:'Stopped dead. Time of death, maybe.',mug:'Someone sat here recently. Prints on the rim.',glow:'That is not supposed to glow. Or be here.'};
+ P.notes.push({h:'Scene',t:'#'+e.no+' '+e.name+' found in the '+roomOf(e)+'. '+e.desc});toast('Evidence #'+e.no+': '+e.name+'. '+quips[e.id]);$('bLab').classList.add('pulse')}
+function roomOf(e){const s=C.tp.S[e.spot];for(let i=0;i<6;i++){const r=ROOMGRID[i];if(s[0]>=r[0]&&s[0]<=r[0]+r[2]&&s[1]>=r[1]&&s[1]<=r[1]+r[3])return C.tp.rooms[i]}return 'scene'}
+function renderTray(){const b=$('tray');b.innerHTML='';P.tray.forEach(id=>{const e=C.E.find(x=>x.id===id),d=document.createElement('span');d.className='chip'+(e.done?' done':'');d.textContent=e.no;d.title=e.name;b.appendChild(d)});$('trayN').textContent=P.tray.length+'/7'}
+document.querySelectorAll('#tools button').forEach(b=>b.onclick=()=>{P.tool=b.dataset.t;document.querySelectorAll('#tools button').forEach(x=>x.classList.toggle('on',x===b));tone(300+TOOLS.indexOf(P.tool)*120,.15,.04)});
+
+/* ---------- panels ---------- */
+const MOT_D1=['We argued bitterly over unpaid rent.','We had a short affair. It ended badly.','I lost my job after a complaint from {V}.','I owed {V} money and had only repaid half.'];
+const open=id=>{$(id).hidden=false;tone(280,.1,.03)},shut=id=>$(id).hidden=true;
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{shut(b.dataset.close);if(b.dataset.close==='lab')renderTray()});
+const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e};
+const vf=()=>C.V.split(' ')[0];
+
+/* lab */
+function resultOf(e){
+ switch(e.id){
+  case 'weapon':case 'mug':return 'Partial print on the '+e.name.toLowerCase()+' matches '+sus(e.who).name+'.';
+  case 'shoe':return 'Size '+C.facts.shoe+' footwear, deep tread, worn left heel. Cast taken.';
+  case 'blood':return 'Blood type '+C.facts.blood+'. Not the victim\'s. Someone cut themselves badly.';
+  case 'fiber':return 'Dyed '+C.facts.fiber[1]+' wool, consistent with a '+C.facts.fiber[0]+'.';
+  case 'watch':return 'Stopped at '+T0()+'. That is your time of death.';
+  case 'glow':return 'Bioluminescent plankton, a species not native to this coast. Source unknown. Dr. Lin would like a word with the ocean.';}}
+function finish(e){if(e.done)return;e.done=true;if(e.id==='shoe')P.unlock.shoe=true;if(e.id==='blood')P.unlock.blood=true;if(e.id==='fiber')P.unlock.fiber=true;if(e.id==='watch')P.unlock.time=true;
+ P.notes.push({h:'Lab',t:'#'+e.no+' '+e.name+': '+resultOf(e)});ding();renderTray()}
+function labList(){const b=$('labB');b.innerHTML='';
+ if(!P.tray.length){b.appendChild(el('p','dim','Nothing collected yet. Sweep the scene with the light, powder and UV lamp, then bring it here.'));return}
+ P.tray.forEach(id=>{const e=C.E.find(x=>x.id===id),r=el('button','row'+(e.done?' ok':''));r.innerHTML='<i>'+e.no+'</i><span><b>'+esc(e.name)+'</b><small>'+(e.done?esc(resultOf(e)):'Tap to analyze')+'</small></span>';r.onclick=()=>analyze(e);b.appendChild(r)});$('bLab').classList.remove('pulse')}
+function analyze(e){const b=$('labB');b.innerHTML='';b.appendChild(el('button','back','‹ Back to evidence')).onclick=labList;
+ b.appendChild(el('h3',null,'#'+e.no+' '+esc(e.name)));
+ if(e.done){b.appendChild(el('p',null,esc(resultOf(e))));return}
+ if(e.kind==='print')return printLab(e,b);
+ const lab={shoe:'Hold to pour the cast',blood:'Tap the centrifuge',fiber:'Hold to run the spectrometer',watch:'Hold to examine the movement',glow:'Hold to run the sample'}[e.id];
+ const pg=el('div','bar','<i></i>'),btn=el('button','big',lab);b.appendChild(el('p','dim',esc(e.desc)));b.appendChild(pg);b.appendChild(btn);
+ let v=0,raf=0,last=0;const fill=()=>pg.firstChild.style.width=Math.min(100,v)+'%',done=()=>{finish(e);analyze(e)};
+ if(e.id==='blood'){btn.onclick=()=>{v+=17;tone(200+v*3,.1,.05);fill();if(v>=100)done()}}
+ else{const step=ts=>{if(!raf)return;v+=(ts-last)/14;last=ts;fill();if(v>=100){raf=0;done()}else raf=requestAnimationFrame(step)};
+  btn.onpointerdown=ev=>{ev.preventDefault();last=performance.now();raf=requestAnimationFrame(step)};const stop=()=>{if(raf){cancelAnimationFrame(raf);raf=0}};btn.onpointerup=stop;btn.onpointerleave=stop;btn.onpointercancel=stop}}
+function printLab(e,b){const w=sus(e.who);b.appendChild(el('p','dim','Match the ridge pattern and the scar line. Both must agree.'));
+ const top=el('div','ev');const c=document.createElement('canvas');c.width=c.height=180;printArt(c,w.pat,w.scar,'#2a2418','#e6dfca',hash(e.id));top.appendChild(c);top.appendChild(el('small',null,'Evidence print'));b.appendChild(top);
+ const grid=el('div','pgrid');
+ C.S.forEach((s,i)=>{const bt=el('button','pc');const c2=document.createElement('canvas');c2.width=c2.height=120;printArt(c2,s.pat,s.scar,'#2a2418','#e6dfca');bt.appendChild(c2);bt.appendChild(el('span',null,esc(s.name)));
+  bt.onclick=()=>{if(i===e.who){finish(e);analyze(e)}else{P.mistakes++;tone(140,.3,.08,'sawtooth');bt.classList.add('bad');toast('No match. Compare the scar line again.')}};grid.appendChild(bt)});b.appendChild(grid)}
+$('bLab').onclick=()=>{open('lab');labList()};
+
+/* people + interview */
+function dossier(i){const s=sus(i),f=[];
+ f.push(['Role',s.role]);f.push(['Wardrobe',P.unlock.fiber?s.ward[0]:'—']);f.push(['Shoe size',P.unlock.shoe?s.shoeSize+' '+s.shoeKind:'—']);f.push(['Blood type',P.unlock.blood?s.blood:'—']);f.push(['Known history',P.hist[i]||'Not yet asked']);
+ return f}
+function peopleList(){const b=$('peopleB');b.innerHTML='';const row=el('div','vrow');const vc=document.createElement('canvas');vc.width=vc.height=64;avatar(vc,hash(C.V),'#555',true);row.appendChild(vc);row.appendChild(el('span',null,'<b>'+esc(C.V)+'</b><small>Victim, '+esc(C.vrole)+'. Found '+C.found+' pm by '+esc(C.finder)+' in the '+esc(C.bodyRoom)+'.</small>'));b.appendChild(row);
+ const grid=el('div','sgrid');C.S.forEach((s,i)=>{const bt=el('button','sc');const c=document.createElement('canvas');c.width=c.height=96;avatar(c,s.seed,s.ward[2]);bt.appendChild(c);bt.appendChild(el('b',null,esc(s.name)));bt.appendChild(el('small',null,esc(s.role)));
+  const n=P.chat[i].filter(x=>x.w==='you').length;bt.appendChild(el('em',null,n?n+' question'+(n>1?'s':'')+' asked':'Not interviewed'));bt.onclick=()=>interview(i);grid.appendChild(bt)});b.appendChild(grid)}
+$('bPeople').onclick=()=>{open('people');peopleList()};
+function say(i,w,t){P.chat[i].push({w,t})}
+function interview(i){const s=sus(i),b=$('peopleB');b.innerHTML='';b.appendChild(el('button','back','‹ All suspects')).onclick=peopleList;
+ const head=el('div','vrow');const c=document.createElement('canvas');c.width=c.height=84;avatar(c,s.seed,s.ward[2]);head.appendChild(c);head.appendChild(el('span',null,'<b>'+esc(s.name)+'</b><small>'+esc(s.role)+'</small>'));b.appendChild(head);
+ const d=el('dl','dos');dossier(i).forEach(([k,v])=>{d.appendChild(el('dt',null,k));d.appendChild(el('dd',null,esc(v)))});b.appendChild(d);
+ const log=el('div','chat');P.chat[i].forEach(m=>log.appendChild(el('p',m.w,esc(m.t))));b.appendChild(log);setTimeout(()=>{log.scrollTop=log.scrollHeight},0);
+ const qs=el('div','qs');const ask=(txt,fn)=>{const q=el('button',null,txt);q.onclick=()=>{say(i,'you',txt);fn();interview(i)};qs.appendChild(q)};
+ if(P.cracked&&s.culprit){log.appendChild(el('p','sys','Confession recorded.'))}
+ ask('Where were you around '+T0()+'?',()=>{say(i,'them',s.alibi);P.notes.push({h:'Interview',t:s.name+' alibi: '+s.alibi})});
+ ask('How did you know '+vf()+'?',()=>{if(s.culprit){say(i,'them','We worked around each other for years. Nothing more to it.')}else{const k=[...C.S].filter(x=>!x.culprit);const mi=MOT_D.findIndex(m=>s.motive===m.replace('{V}',C.V));say(i,'them',MOT_D1[mi].replace('{V}',vf()));P.hist[i]=s.motive;P.notes.push({h:'Interview',t:s.name+': '+s.motive})}});
+ ask('Who else was around that night?',()=>{say(i,'them',s.other);P.testi[i]=true;P.notes.push({h:'Interview',t:s.name+' says: '+s.other})});
+ if(s.culprit&&P.testi[C.w]&&!P.cracked)ask('"'+sus(C.w).first+' saw you heading for the '+C.bodyRoom+'."',()=>{say(i,'them','I stepped out for air. That proves nothing.');pressure(i,'confront')});
+ const pv=el('button','pres','Present evidence ▾');pv.onclick=()=>presentList(i);qs.appendChild(pv);b.appendChild(qs)}
+function pressure(i,k){if(!sus(i).culprit||P.cracked)return;P.seenPress[k]=1;if(Object.keys(P.seenPress).length>=2){P.cracked=true;say(i,'them',sus(i).crack);P.notes.push({h:'Interview',t:'CONFESSION from '+sus(i).name+': '+sus(i).motive});tone(180,1,.1,'triangle')}}
+function presentList(i){const b=$('peopleB');b.innerHTML='';b.appendChild(el('button','back','‹ Back to '+esc(sus(i).first))).onclick=()=>interview(i);b.appendChild(el('h3',null,'Present to '+esc(sus(i).first)));
+ const done=P.tray.map(id=>C.E.find(x=>x.id===id)).filter(e=>e.done);if(!done.length)b.appendChild(el('p','dim','Analyze evidence in the lab first. You can only present results you can stand behind.'));
+ done.forEach(e=>{const r=el('button','row','<i>'+e.no+'</i><span><b>'+esc(e.name)+'</b><small>'+esc(resultOf(e))+'</small></span>');r.onclick=()=>{say(i,'you','(Shows '+e.name+'.)');say(i,'them',react(i,e));interview(i)};b.appendChild(r)})}
+function react(i,e){const s=sus(i);let t='',p=false;
+ switch(e.id){
+  case 'weapon':if(s.culprit){t='Everyone in town has handled a thing like that. It proves nothing.';p=true}else t='Never seen it before tonight.';break;
+  case 'shoe':if(s.culprit){t='Half the island wears that size. It means nothing.';p=true}else if(i===C.h1)t=s.shoeReact;else t='Wrong size for me, detective.';break;
+  case 'blood':if(s.culprit){t='I cut myself on a fish hook last week. Everyone does.';p=true}else if(i===C.h2)t=s.bloodReact;else t='That is not my type. The clinic has it on file.';break;
+  case 'fiber':if(s.culprit){t='Wool is wool. I own a coat or two. So does everyone.';p=true}else t='I do not own anything that colour.';break;
+  case 'mug':t=i===C.h1?s.mugReact:'That is not my mug.';break;
+  case 'watch':t=s.culprit?'I have told you where I was.':'A terrible way to learn what time it was.';break;
+  default:t=['I have not been near the water, detective.','I saw lights on the shore once. I never told anyone.','That is not natural. Pour it away.','My grandmother called that the tide remembering.'][i%4]}
+ if(p)pressure(i,'ev:'+e.id);P.notes.push({h:'Interview',t:s.name+' on '+e.name+': '+t});return t}
+
+/* notes + matrix */
+function notes(){const b=$('notesB');b.innerHTML='';
+ b.appendChild(el('h3',null,'Clue matrix'));const tb=el('div','tbl');let h='<table><tr><th></th><th>Print</th><th>Shoe</th><th>Blood</th><th>Wool</th></tr>';
+ const w=C.E.find(e=>e.id==='weapon');
+ C.S.forEach((s,i)=>{const pr=w.done?(i===C.cu?'<b class="y">match</b>':'no'):'—',sh=P.unlock.shoe?'<span class="'+(s.shoeSize===C.facts.shoe?'y':'')+'">'+s.shoeSize+'</span>':'—',bl=P.unlock.blood?'<span class="'+(s.blood===C.facts.blood?'y':'')+'">'+s.blood+'</span>':'—',fb=P.unlock.fiber?'<span class="'+(s.ward[1]===C.facts.fiber[1]?'y':'')+'">'+s.ward[1]+'</span>':'—';h+='<tr><td>'+esc(s.first)+'</td><td>'+pr+'</td><td>'+sh+'</td><td>'+bl+'</td><td>'+fb+'</td></tr>'});
+ tb.innerHTML=h+'</table>';b.appendChild(tb);b.appendChild(el('h3',null,'Case notes'));
+ if(!P.notes.length)b.appendChild(el('p','dim','No notes yet.'));P.notes.slice().reverse().forEach(n=>b.appendChild(el('p','note','<b>'+n.h+'</b> '+esc(n.t))))}
+$('bNotes').onclick=()=>{open('notes');notes()};
+
+/* hint */
+$('bHint').onclick=()=>{P.hints++;const un=C.E.find(e=>!e.got);let t;
+ if(un&&P.tray.length<4)t='Dr. Lin: Try the '+roomOf(un)+'. '+(un.tool==='look'?'Something metal catches the light.':un.tool==='dust'?'Switch to powder. Smooth surfaces keep prints.':'Switch to the UV lamp. Something wet has dried here.');
+ else if(P.tray.some(id=>!C.E.find(e=>e.id===id).done))t='Dr. Lin: You have items waiting in the lab. Run them.';
+ else if(!P.chat.some(c=>c.length))t='Det. Reyes: Talk to all four. Ask each who else was around.';
+ else if(un)t='Dr. Lin: There is still something in the '+roomOf(un)+'.';
+ else if(!P.cracked)t='Det. Reyes: Only one suspect fits the print, the size, the blood type and the wool. Press them with it, then use what '+sus(C.w).first+' saw.';
+ else t='Chief Okafor: You have what you need. Make the arrest.';
+ toast(t)};
+
+/* accuse */
+let pickS=null,pickM=null,pickE=[];
+function accuse(){const b=$('accB');b.innerHTML='';b.appendChild(el('h3',null,'Who did it?'));const gs=el('div','sgrid');
+ C.S.forEach((s,i)=>{const bt=el('button','sc'+(pickS===i?' on':''));const c=document.createElement('canvas');c.width=c.height=72;avatar(c,s.seed,s.ward[2]);bt.appendChild(c);bt.appendChild(el('b',null,esc(s.name)));bt.onclick=()=>{pickS=i;accuse()};gs.appendChild(bt)});b.appendChild(gs);
+ b.appendChild(el('h3',null,'Why?'));const ms=el('div','list');C.S.map((s,i)=>[s.motive,i]).sort((a,b2)=>hash(a[0])-hash(b2[0])).forEach(([m,i])=>{const r=el('button','opt'+(pickM===i?' on':''),esc(m));r.onclick=()=>{pickM=i;accuse()};ms.appendChild(r)});b.appendChild(ms);
+ b.appendChild(el('h3',null,'Which two pieces of evidence prove it?'));const es=el('div','list');const done=P.tray.map(id=>C.E.find(e=>e.id===id)).filter(e=>e.done);if(!done.length)es.appendChild(el('p','dim','Analyze evidence in the lab first.'));
+ done.forEach(e=>{const r=el('button','opt'+(pickE.includes(e.id)?' on':''),'<b>#'+e.no+'</b> '+esc(e.name)+': '+esc(resultOf(e)));r.onclick=()=>{pickE=pickE.includes(e.id)?pickE.filter(x=>x!==e.id):[...pickE,e.id].slice(-2);accuse()};es.appendChild(r)});b.appendChild(es);
+ const go=el('button','big','Make the arrest');go.disabled=pickS==null||pickM==null||pickE.length<2;go.onclick=verdict;b.appendChild(go);b.appendChild(el('p','dim','Attempts left: '+(2-P.tries)))}
+$('bAcc').onclick=()=>{open('acc');pickS=pickM=null;pickE=[];accuse()};
+const VALID=['weapon','shoe','blood','fiber'];
+function verdict(){const ok=pickS===C.cu,mot=pickM===C.cu,ev=pickE.filter(x=>VALID.includes(x)).length;
+ if(!ok){P.tries++;tone(120,.6,.1,'sawtooth');if(P.tries>=2){shut('acc');ending(0)}else{$('accB').innerHTML='';$('accB').appendChild(el('h3',null,'The case collapses'));$('accB').appendChild(el('p',null,esc(sus(pickS).name)+' walks, and the real culprit hears about it. Chief Okafor wants you to look at the clue matrix again. One attempt left.'));const r=el('button','big','Back to the case');r.onclick=()=>shut('acc');$('accB').appendChild(r)}return}
+ let stars=1;if(mot&&ev===2)stars=3;else if(mot||ev===2)stars=2;if(P.hints>2||P.mistakes>3)stars=Math.max(1,stars-(stars===3?1:0));if(P.cracked&&stars<3&&mot)stars=Math.min(3,stars+0);
+ shut('acc');ending(stars)}
+const RANKS=['Cold Case','Rookie','Investigator','Chief Inspector'];
+function ending(stars){P.end=true;if(stars)saveRec(C.seed,stars);const c=sus(C.cu);
+ $('resS').textContent=stars?'★'.repeat(stars)+'☆'.repeat(3-stars):'☆☆☆';$('resR').textContent=RANKS[stars];
+ const rec=stars?esc(c.name)+' ('+esc(c.role)+') killed '+esc(C.V)+' at '+T0()+' pm with the '+esc(C.weapon[0].toLowerCase())+'. '+esc(c.motive)+' They left a print on the weapon, a size '+C.facts.shoe+' boot print, a smear of '+C.facts.blood+' blood, and wool fibres from a '+esc(C.facts.fiber[0])+'. They lied about being at '+esc(c.alibiPlace)+', and '+esc(sus(C.w).name)+' saw them heading for the '+esc(C.bodyRoom)+'.'
+   :'You ran out of attempts. The killer was '+esc(c.name)+', the '+esc(c.role.toLowerCase())+'. '+esc(c.motive)+' The print on the '+esc(C.weapon[0].toLowerCase())+' was theirs all along.';
+ $('resB').innerHTML='<p>'+rec+'</p><p class="uc">Dr. Lin’s plankton samples were still glowing at dawn. The tide chart says the sea has not reached '+esc(C.loc)+' in thirty years. Nobody writes that in the report.</p><p class="dim">Time '+clockTxt()+' · hints '+P.hints+' · lab mistakes '+P.mistakes+(P.cracked?' · confession obtained':'')+'</p>';open('res')}
+
+/* menus */
+function brief(){const b=$('briefB');b.innerHTML='';const hd=el('div','vrow');const vc=document.createElement('canvas');vc.width=vc.height=84;avatar(vc,hash(C.V),'#555',true);hd.appendChild(vc);
+ hd.appendChild(el('span',null,'<small class="mono">CASE '+caseNo(C.seed)+'</small><b>'+esc(C.V)+'</b><small>'+esc(C.vrole)+', found dead</small>'));b.appendChild(hd);
+ b.appendChild(el('p',null,'Found at <b>'+C.found+' pm</b> in the <b>'+esc(C.bodyRoom)+'</b> of '+esc(C.tp.tag)+' by '+esc(C.finder)+'. Dr. Lin puts death between <b>10:00 and 11:00 pm</b>. Four people were on the premises tonight.'));
+ const g2=el('div','sgrid');C.S.forEach(s=>{const x=el('div','sc');const c=document.createElement('canvas');c.width=c.height=72;avatar(c,s.seed,s.ward[2]);x.appendChild(c);x.appendChild(el('b',null,esc(s.name)));x.appendChild(el('small',null,esc(s.role)));g2.appendChild(x)});b.appendChild(g2);
+ b.appendChild(el('p','dim','Sweep the dark scene with your light. Switch to powder for prints and UV for stains. Collect, analyze, question, arrest.'))}
+function start(seed){newGame(seed);started=true;$('title').hidden=true;$('scene').hidden=false;layout();camX=300;camY=300;renderTray();document.querySelectorAll('#tools button').forEach(x=>x.classList.toggle('on',x.dataset.t==='look'));$('cno').textContent='CASE '+caseNo(seed);$('loc').textContent=C.loc;brief();open('brief')}
+$('briefGo').onclick=()=>{shut('brief');toast('Drag to sweep the light. Tap evidence to collect it.')};
+$('bDaily').onclick=()=>start('daily-'+today());
+$('bRand').onclick=()=>start('case-'+((Math.random()*1e6)|0));
+$('bQuit').onclick=()=>{started=false;$('scene').hidden=true;$('title').hidden=false;$('resB').innerHTML='';shut('res');titleInfo()};
+$('resAgain').onclick=()=>{shut('res');started=false;$('scene').hidden=true;$('title').hidden=false;titleInfo()};
+function titleInfo(){const r=loadRec(),d='daily-'+today(),s=r[d];$('dInfo').textContent=s?'Solved today: '+'★'.repeat(s):'Fresh case every day';}
+resizeInit();function resizeInit(){layout();titleInfo();requestAnimationFrame(frame)}
+if(/crtest/.test(location.search))window.__cr={get C(){return C},get P(){return P},start,collect,finish,analyze,react,pressure,say,verdict:(s,m,e)=>{pickS=s;pickM=m;pickE=e;verdict()},ending,roomOf,resultOf,tryCollect,render,get pick(){return[pickS,pickM,pickE]}};
+})();</script>
+
+</body>
+</html>
